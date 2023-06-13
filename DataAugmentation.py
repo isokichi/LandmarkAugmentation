@@ -155,6 +155,76 @@ def expand_mask(mask, kernel_size=3, iterations=1):
     return expanded_mask
 
 
+def shear_image(input_image_path, input_annotation_path, image_name, max_shear_range=0.25):
+    # 画像の読み込み
+    image = cv2.imread(input_image_path)
+    
+    # 座標データの読み込み
+    with open(input_annotation_path, 'r') as file:
+        lines = file.readlines()
+
+    # 座標データをパースして点の座標リストを作成
+    points = []
+    for line in lines[1:]:
+        x, y = map(float, line.strip().split(','))
+        points.append((int(x), int(y)))
+    
+    # 画像のサイズを取得
+    image_height, image_width, _ = image.shape
+    
+    # シフト処理のループ
+    while True:
+        
+        # せん断パラメータのランダムな値を生成
+        shear_factor_x = random.uniform(-max_shear_range, max_shear_range)
+        shear_factor_y = random.uniform(-max_shear_range, max_shear_range)
+        
+        
+        # せん断変換後の特徴点の座標を計算
+        sheared_points = []
+        for point in points:
+            x, y = point
+            new_x = x + shear_factor_x * y
+            new_y = y + shear_factor_y * x
+            sheared_points.append((new_x, new_y))
+        
+        # 特徴点が画像の範囲内に収まっているかチェック
+        # for point in shifted_pointsの中で全ての点が画像内に収まっていることを確認。all関数で一つでもfalseがあれば条件を満たさない。
+        in_range = all(0 <= point[0] < image_width and 0 <= point[1] < image_height for point in sheared_points)
+        if in_range:
+            break  # すべての特徴点が範囲内に収まっていればループを終了
+        
+        # 範囲外の特徴点がある場合、max_shear_rangeを下げて再度シフトする
+        max_shear_range *= 0.9  # max_shear_rangeを10%減少させる
+        
+    # せん断行列を作成
+    M = np.array([[1, shear_factor_x, 0], [shear_factor_y, 1, 0]], dtype=np.float32)
+    
+    # 画像のせん断変換
+    sheared_image = cv2.warpAffine(image, M, (image_width, image_height))
+
+    # せん断の画像を補完
+    mask = np.all(sheared_image == 0, axis=2).astype(np.uint8)  # 3チャンネルの画像を2値のマスク画像に変換
+    expanded_mask = expand_mask(mask, kernel_size=3, iterations=1)
+
+    sheared_image = cv2.inpaint(sheared_image, expanded_mask, 5, cv2.INPAINT_NS)
+    
+    # せん断変換後の画像と特徴点を保存
+    output_image_path = f'{image_dir_path}/sheared_{image_name}.jpg'
+    output_annotation_path = f'{annotation_dir_path}/sheared_{image_name}.txt'
+
+    cv2.imwrite(output_image_path, sheared_image)
+
+    with open(output_annotation_path, 'w') as file:
+        # 最初の行に画像ファイル名を書き込む
+        file.write(f"sheared_{image_name}\n")
+        # せん断変換後の特徴点の座標を書き込む
+        for point in sheared_points:
+            file.write(f"{point[0]},{point[1]}\n")
+
+
+
 shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5)
 rotate_image(input_image_path, input_annotation_path, image_name, angle=30)
 rotate_image(input_image_path, input_annotation_path, image_name, angle=330)
+shear_image(input_image_path, input_annotation_path, image_name, max_shear_range=0.25)
