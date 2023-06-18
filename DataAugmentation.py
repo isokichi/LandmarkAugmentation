@@ -1,13 +1,45 @@
 import cv2
 import numpy as np
 import random
+import sys
+import glob
+
 
 image_dir_path = 'dataset'
 annotation_dir_path = 'dataset/annotation'
-image_name = 'dogface20211028-2'
 
-input_image_path = f'{image_dir_path}/{image_name}.jpg'
-input_annotation_path = f'{annotation_dir_path}/{image_name}.txt'
+def main():
+    # 全て拡張する場合
+    if len(sys.argv) > 1 and sys.argv[1] == "all":
+        annotation_files = sorted(glob.glob(f"{annotation_dir_path}/*.txt"))
+        for annotation_file in annotation_files:
+            # テキストファイルから座標データを読み込む
+            with open(annotation_file, 'r') as file:
+                lines = file.readlines()
+
+            # 画像の読み込み
+            image_name = lines[0].strip() #改行は削除
+
+            augument(image_name)
+
+    else:
+        image_name = 'dogface20211028-2'
+        augument(image_name)
+
+
+def augument(image_name):
+
+    input_image_path = f'{image_dir_path}/{image_name}.jpg'
+    input_annotation_path = f'{annotation_dir_path}/{image_name}.txt'
+
+    shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5)
+    rotate_image(input_image_path, input_annotation_path, image_name, angle=30)
+    rotate_image(input_image_path, input_annotation_path, image_name, angle=330)
+    shear_image(input_image_path, input_annotation_path, image_name, max_shear_range=0.25)
+    apply_gaussian_blur(input_image_path, input_annotation_path, image_name, kernel_size=(5, 5), sigmaX=0)
+    adjust_brightness(input_image_path, input_annotation_path, image_name, brightness_factor=0.7)
+    adjust_brightness(input_image_path, input_annotation_path, image_name, brightness_factor=1.3)
+
 
 def shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5):
     # 画像の読み込み
@@ -218,7 +250,7 @@ def shear_image(input_image_path, input_annotation_path, image_name, max_shear_r
         for point in sheared_points:
             file.write(f"{point[0]},{point[1]}\n")
 
-def apply_gaussian_blur(input_image_path, input_annotation_path, kernel_size=(5, 5), sigmaX=0):
+def apply_gaussian_blur(input_image_path, input_annotation_path, image_name, kernel_size=(5, 5), sigmaX=0):
     # 画像の読み込み
     image = cv2.imread(input_image_path)
 
@@ -243,7 +275,7 @@ def apply_gaussian_blur(input_image_path, input_annotation_path, kernel_size=(5,
     cv2.imwrite(output_image_path, blurred_image)
 
 
-def adjust_brightness(input_image_path, input_annotation_path, brightness_factor=1.0):
+def adjust_brightness(input_image_path, input_annotation_path, image_name, brightness_factor=1.0):
     # 画像の読み込み
     image = cv2.imread(input_image_path)
 
@@ -269,10 +301,7 @@ def adjust_brightness(input_image_path, input_annotation_path, brightness_factor
 
 
 
-shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5)
-rotate_image(input_image_path, input_annotation_path, image_name, angle=30)
-rotate_image(input_image_path, input_annotation_path, image_name, angle=330)
-shear_image(input_image_path, input_annotation_path, image_name, max_shear_range=0.25)
-apply_gaussian_blur(input_image_path, input_annotation_path, kernel_size=(5, 5), sigmaX=0)
-adjust_brightness(input_image_path, input_annotation_path, brightness_factor=0.7)
-adjust_brightness(input_image_path, input_annotation_path, brightness_factor=1.3)
+
+
+if __name__ == "__main__":
+    main()
