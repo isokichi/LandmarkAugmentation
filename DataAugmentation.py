@@ -9,10 +9,6 @@ image_name = 'dogface20211028-2'
 input_image_path = f'{image_dir_path}/{image_name}.jpg'
 input_annotation_path = f'{annotation_dir_path}/{image_name}.txt'
 
-import cv2
-import numpy as np
-import random
-
 def shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5):
     # 画像の読み込み
     image = cv2.imread(input_image_path)
@@ -222,9 +218,61 @@ def shear_image(input_image_path, input_annotation_path, image_name, max_shear_r
         for point in sheared_points:
             file.write(f"{point[0]},{point[1]}\n")
 
+def apply_gaussian_blur(input_image_path, input_annotation_path, kernel_size=(5, 5), sigmaX=0):
+    # 画像の読み込み
+    image = cv2.imread(input_image_path)
+
+    # 座標データの読み込み
+    with open(input_annotation_path, 'r') as file:
+        lines = file.readlines()
+    
+    # ガウスぼかしの適用
+    blurred_image = cv2.GaussianBlur(image, kernel_size, sigmaX)
+    
+    # ガウスぼかしを適用した画像と特徴点を保存
+    output_image_path = f'{image_dir_path}/gaussian_blur_{image_name}.jpg'
+    output_annotation_path = f'{annotation_dir_path}/gaussian_blur_{image_name}.txt'
+
+    with open(output_annotation_path, 'w') as file:
+        # 最初の行に画像ファイル名を書き込む
+        file.write(f"gaussian_blur_{image_name}\n")
+        # 特徴点の座標を書き込む
+        for line in lines[1:]:
+            file.write(f"{line}")
+
+    cv2.imwrite(output_image_path, blurred_image)
+
+
+def adjust_brightness(input_image_path, input_annotation_path, brightness_factor=1.0):
+    # 画像の読み込み
+    image = cv2.imread(input_image_path)
+
+    # 座標データの読み込み
+    with open(input_annotation_path, 'r') as file:
+        lines = file.readlines()
+    
+    # 明るさの調整
+    adjusted_image = cv2.convertScaleAbs(image, alpha=brightness_factor)
+    
+    # 明るさを調整した画像と特徴点を保存
+    output_image_path = f'{image_dir_path}/brightness_adjusted_{int(brightness_factor*100)}_{image_name}.jpg'
+    output_annotation_path = f'{annotation_dir_path}/brightness_adjusted_{int(brightness_factor*100)}_{image_name}.txt'
+
+    with open(output_annotation_path, 'w') as file:
+        # 最初の行に画像ファイル名を書き込む
+        file.write(f"brightness_adjusted_{int(brightness_factor*100)}_{image_name}\n")
+        # 特徴点の座標を書き込む
+        for line in lines[1:]:
+            file.write(f"{line}")
+
+    cv2.imwrite(output_image_path, adjusted_image)
+
 
 
 shift_image(input_image_path, input_annotation_path, image_name, max_shift_ratio=0.5)
 rotate_image(input_image_path, input_annotation_path, image_name, angle=30)
 rotate_image(input_image_path, input_annotation_path, image_name, angle=330)
 shear_image(input_image_path, input_annotation_path, image_name, max_shear_range=0.25)
+apply_gaussian_blur(input_image_path, input_annotation_path, kernel_size=(5, 5), sigmaX=0)
+adjust_brightness(input_image_path, input_annotation_path, brightness_factor=0.7)
+adjust_brightness(input_image_path, input_annotation_path, brightness_factor=1.3)
